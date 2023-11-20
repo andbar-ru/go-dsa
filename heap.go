@@ -112,6 +112,32 @@ func (n *FibonacciHeapNode) String() string {
 	return s
 }
 
+func (n *FibonacciHeapNode) limitedString(level, maxLevel int) string {
+	if level > maxLevel {
+		return ""
+	}
+
+	s := "("
+	if n == nil {
+		s += ")"
+		return s
+	}
+	curNode := n
+	first := true
+	for curNode != n || first {
+		if first {
+			s += "⟷"
+			first = false
+		}
+		s += " " + strconv.Itoa(curNode.key)
+		s += curNode.child.limitedString(level+1, maxLevel)
+		s += " ⟷"
+		curNode = curNode.right
+	}
+	s += ")"
+	return s
+}
+
 type FibonacciHeap struct {
 	min   *FibonacciHeapNode
 	trace bool
@@ -165,8 +191,8 @@ func (h *FibonacciHeap) ExtractMin() (int, bool) {
 	if firstChild != nil {
 		for ok := true; ok; ok = curChild != nil && curChild != firstChild { // similar to do..while
 			right := curChild.right
-			h.Insert(curChild)
 			curChild.parent = nil
+			h.Insert(curChild)
 			curChild = right
 		}
 	}
@@ -189,8 +215,12 @@ func (h *FibonacciHeap) consolidate() {
 	maxDegree := 0
 	d2n := make(map[int]*FibonacciHeapNode)
 	curNode := h.min
-	checkNode := h.min
-	for ok := true; ok; ok = curNode != nil && curNode != checkNode {
+	visited := make(map[*FibonacciHeapNode]struct{})
+	for curNode != nil {
+		if _, ok := visited[curNode]; ok {
+			break
+		}
+		visited[curNode] = struct{}{}
 		x := curNode
 		d := x.degree
 		for d2n[d] != nil {
@@ -201,9 +231,6 @@ func (h *FibonacciHeap) consolidate() {
 			}
 			fibHeapLink(y, x)
 			delete(d2n, d)
-			if len(d2n) == 0 {
-				checkNode = x
-			}
 			d++
 		}
 		if d > maxDegree {
@@ -219,6 +246,100 @@ func (h *FibonacciHeap) consolidate() {
 			h.Insert(node)
 		}
 	}
+}
+
+func (h *FibonacciHeap) find(key int) *FibonacciHeapNode {
+	if h == nil || h.min == nil {
+		return nil
+	}
+	var found *FibonacciHeapNode
+
+	var findInNode func(key int, node *FibonacciHeapNode)
+	findInNode = func(key int, node *FibonacciHeapNode) {
+		if node == nil || found != nil {
+			return
+		}
+		curNode := node
+		for ok := true; ok; ok = curNode != node && found == nil {
+			if curNode.key == key {
+				found = curNode
+				return
+			}
+			child := curNode.child
+			findInNode(key, child)
+			curNode = curNode.right
+		}
+	}
+
+	findInNode(key, h.min)
+	return found
+}
+
+func (h *FibonacciHeap) DecreaseKey(key, newKey int) {
+	if h == nil || h.min == nil || newKey > key {
+		return
+	}
+	node := h.find(key)
+	if node == nil {
+		return
+	}
+	node.key = newKey
+	parent := node.parent
+	if parent != nil && node.key < parent.key {
+		h.cut(node, parent)
+		h.cascadingCut(parent)
+	}
+	if node.key < h.min.key {
+		h.min = node
+	}
+}
+
+func (h *FibonacciHeap) cut(node, parent *FibonacciHeapNode) {
+	if h == nil || h.min == nil || node == nil || parent == nil {
+		panic("cut: h == nil || h.min == nil || node == nil || parent == nil")
+	}
+	node.right.left = node.left
+	node.left.right = node.right
+
+	parent.degree--
+	if parent.child == node {
+		if node.right != node {
+			parent.child = node.right
+		} else {
+			parent.child = nil
+		}
+	}
+
+	node.right = nil
+	node.left = nil
+	h.Insert(node)
+	node.parent = nil
+	node.mark = false
+}
+
+func (h *FibonacciHeap) cascadingCut(parent *FibonacciHeapNode) {
+	if h == nil || h.min == nil || parent == nil {
+		panic("cut: h == nil || h.min == nil || parent == nil")
+	}
+	grandParent := parent.parent
+	if grandParent == nil {
+		return
+	}
+	if !parent.mark {
+		parent.mark = true
+	} else {
+		h.cut(parent, grandParent)
+		h.cascadingCut(grandParent)
+	}
+}
+
+func (h *FibonacciHeap) Delete(key int) {
+	if h == nil || h.min == nil {
+		return
+	}
+	newKey := h.min.key - 1
+	h.DecreaseKey(key, newKey)
+	h.ExtractMin()
 }
 
 func fibHeapLink(y, x *FibonacciHeapNode) {

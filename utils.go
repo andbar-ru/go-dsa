@@ -1,5 +1,7 @@
 package dsa
 
+import "fmt"
+
 func abs(v int) int {
 	if v < 0 {
 		return -v
@@ -34,4 +36,13 @@ func getPrime(n int) int {
 		n += 2
 	}
 	return n
+}
+
+const debug = false
+
+func dprint(args ...interface{}) {
+	if !debug {
+		return
+	}
+	fmt.Println(args...)
 }

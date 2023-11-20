@@ -8,6 +8,7 @@ import (
 
 type fHeapNode struct {
 	key      int
+	mark     bool
 	children []*fHeapNode
 }
 
@@ -31,7 +32,7 @@ func (n *fHeapNode) FibonacciHeapNode() *FibonacciHeapNode {
 		}
 		var cLeft, cFirst *FibonacciHeapNode
 		for _, child := range children {
-			cNode := &FibonacciHeapNode{key: child.key, degree: len(child.children)}
+			cNode := &FibonacciHeapNode{key: child.key, degree: len(child.children), mark: child.mark}
 			processNode(cNode, node, cLeft, cFirst, child.children)
 			cLeft = cNode
 			if cFirst == nil {
@@ -41,7 +42,7 @@ func (n *fHeapNode) FibonacciHeapNode() *FibonacciHeapNode {
 		}
 	}
 
-	node := &FibonacciHeapNode{key: n.key, degree: len(n.children)}
+	node := &FibonacciHeapNode{key: n.key, degree: len(n.children), mark: n.mark}
 	processNode(node, nil, nil, nil, n.children)
 	return node
 }
@@ -184,10 +185,12 @@ func TestFibonacciHeap(t *testing.T) {
 		key: 3,
 		children: []*fHeapNode{
 			{
-				key: 18,
+				key:  18,
+				mark: true,
 				children: []*fHeapNode{
 					{
-						key: 39,
+						key:  39,
+						mark: true,
 					},
 				},
 			},
@@ -222,7 +225,8 @@ func TestFibonacciHeap(t *testing.T) {
 		key: 24,
 		children: []*fHeapNode{
 			{
-				key: 26,
+				key:  26,
+				mark: true,
 				children: []*fHeapNode{
 					{
 						key: 35,
@@ -270,5 +274,56 @@ func TestFibonacciHeap(t *testing.T) {
 	walkFibonacciHeap(fheap, validateDegree)
 	if len(unvisited) > 0 {
 		t.Errorf("There are unvisited keys: %v", unvisited)
+	}
+
+	/* Decrease Key */
+
+	fheap.DecreaseKey(46, 15)
+	res = fmt.Sprint(fheap)
+	want = "(⟷ 7(⟷ 24(⟷ 26(⟷ 35() ⟷) ⟷) ⟷ 17(⟷ 30() ⟷) ⟷ 23() ⟷) ⟷ 18(⟷ 21(⟷ 52() ⟷) ⟷ 39() ⟷) ⟷ 38(⟷ 41() ⟷) ⟷ 15() ⟷)"
+	if res != want {
+		t.Errorf("fheap after DecreaseKey(46, 15) = %s, want %s", res, want)
+	}
+	k2d = map[int]int{7: 3, 24: 1, 26: 1, 35: 0, 17: 1, 30: 0, 23: 0, 18: 2, 21: 1, 52: 0, 39: 0, 38: 1, 41: 0, 15: 0}
+	unvisited = make(map[int]struct{}, len(k2d))
+	for key := range k2d {
+		unvisited[key] = struct{}{}
+	}
+	walkFibonacciHeap(fheap, validateDegree)
+	if len(unvisited) > 0 {
+		t.Errorf("There are unvisited keys: %v", unvisited)
+	}
+
+	fheap.DecreaseKey(35, 5)
+	res = fmt.Sprint(fheap)
+	want = "(⟷ 5() ⟷ 7(⟷ 17(⟷ 30() ⟷) ⟷ 23() ⟷) ⟷ 18(⟷ 21(⟷ 52() ⟷) ⟷ 39() ⟷) ⟷ 38(⟷ 41() ⟷) ⟷ 15() ⟷ 26() ⟷ 24() ⟷)"
+	if res != want {
+		t.Errorf("fheap after DecreaseKey(35, 5) = %s, want %s", res, want)
+	}
+	min = fheap.min.key
+	wantMin = 5
+	if min != wantMin {
+		t.Errorf("min = %d, want %d", min, wantMin)
+	}
+	k2d = map[int]int{7: 2, 24: 0, 26: 0, 17: 1, 30: 0, 23: 0, 18: 2, 21: 1, 52: 0, 39: 0, 38: 1, 41: 0, 15: 0, 5: 0}
+	unvisited = make(map[int]struct{}, len(k2d))
+	for key := range k2d {
+		unvisited[key] = struct{}{}
+	}
+	walkFibonacciHeap(fheap, validateDegree)
+	if len(unvisited) > 0 {
+		t.Errorf("There are unvisited keys: %v", unvisited)
+	}
+
+	fheap.Delete(15)
+	res = fmt.Sprint(fheap)
+	want = "(⟷ 5() ⟷ 24(⟷ 38(⟷ 41() ⟷) ⟷ 26() ⟷) ⟷ 7(⟷ 18(⟷ 21(⟷ 52() ⟷) ⟷ 39() ⟷) ⟷ 17(⟷ 30() ⟷) ⟷ 23() ⟷) ⟷)"
+	if res != want {
+		t.Errorf("fheap after Delete(15) = %s, want %s", res, want)
+	}
+	min = fheap.min.key
+	wantMin = 5
+	if min != wantMin {
+		t.Errorf("min = %d, want %d", min, wantMin)
 	}
 }
